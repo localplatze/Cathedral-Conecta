@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Cathedral Conecta",
+    "slug": "cath-conn",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FDF7E8"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.platze.cathconn"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
