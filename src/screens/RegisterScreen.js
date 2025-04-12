@@ -83,7 +83,7 @@ export const RegisterScreen = ({ navigation }) => {
         <View style={styles.content}>
           <Image
             style={styles.logo}
-            source={require('../assets/pet.png')}
+            source={require('../assets/vert_logo.png')}
             resizeMode="contain"
           />
           

@@ -57,7 +57,7 @@ export const RecoverScreen = ({ navigation }) => {
       <View style={styles.content}>
         <Image
           style={styles.lockIcon}
-          source={require('../assets/pet.png')}
+          source={require('../assets/vert_logo.png')}
           resizeMode="contain"
         />
 

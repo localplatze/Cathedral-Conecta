@@ -143,13 +143,13 @@ export const LoginScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#1D854C" barStyle="light-content" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Abraço Pet</Text>
+        <Text style={styles.headerTitle}>Cathedral Conecta</Text>
       </View>
       
       <View style={styles.content}>
         <Image
           style={styles.logo}
-          source={require('../assets/pet.png')}
+          source={require('../assets/vert_logo.png')}
           resizeMode="contain"
         />
 
@@ -198,7 +198,7 @@ export const LoginScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.loginButton}
-            onPress={handleLogin}
+            onPress={() => navigation.navigate('Home')}
             activeOpacity={0.8}
           >
             <Text style={styles.loginButtonText}>ENTRAR</Text>
