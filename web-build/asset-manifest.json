@@ -1,0 +1,22 @@
+{
+  "files": {
+    "main.js": "/static/js/main.7ae09db4.js",
+    "static/js/261.7e03e747.js": "/static/js/261.7e03e747.js",
+    "static/media/MaterialCommunityIcons.ttf": "/static/media/MaterialCommunityIcons.5d42b4e60858731e7b65.ttf",
+    "static/media/Ionicons.ttf": "/static/media/Ionicons.9b6b1954a5eb6efeaf11.ttf",
+    "static/media/MaterialIcons.ttf": "/static/media/MaterialIcons.f20305dee9d396fea5c7.ttf",
+    "static/media/vert_logo.png": "/static/media/vert_logo.cd43385f9a6bdb37ebfe.png",
+    "favicon.ico": "/favicon.ico",
+    "index.html": "/index.html",
+    "favicon-32.png": "/favicon-32.png",
+    "favicon-16.png": "/favicon-16.png",
+    "manifest.json": "/manifest.json",
+    "serve.json": "/serve.json",
+    "main.7ae09db4.js.map": "/static/js/main.7ae09db4.js.map",
+    "261.7e03e747.js.map": "/static/js/261.7e03e747.js.map"
+  },
+  "entrypoints": [
+    "static/js/261.7e03e747.js",
+    "static/js/main.7ae09db4.js"
+  ]
+}
