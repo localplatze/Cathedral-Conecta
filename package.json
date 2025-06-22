@@ -2,11 +2,14 @@
   "name": "abraco-pet",
   "version": "1.0.0",
   "main": "index.js",
+  "homepage": "https://localplatze.github.io/Cathedral-Conecta",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "predeploy": "expo export:web",
+    "deploy": "gh-pages -d web-build"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.4",
@@ -35,7 +38,8 @@
     "react-native-web": "~0.19.13"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0"
+    "@babel/core": "^7.20.0",
+    "gh-pages": "^6.3.0"
   },
   "private": true
 }
