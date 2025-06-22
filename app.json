@@ -13,7 +13,8 @@
       "backgroundColor": "#FDF7E8"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.platze.cathconn"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,6 +25,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "80b20704-429b-412e-be81-275a8ef12da4"
+      }
     }
   }
 }
