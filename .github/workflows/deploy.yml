@@ -1,0 +1,61 @@
+# Nome do seu Workflow
+name: Deploy Expo Web to GitHub Pages
+
+# Gatilho: Rodar sempre que houver um push na branch 'main'
+on:
+  push:
+    branches:
+      - main # ou 'master', dependendo do seu repositório
+
+# Permissões necessárias para que a Action possa publicar no GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Tarefas a serem executadas
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest # Usar uma máquina virtual Linux
+    steps:
+      # 1. Baixa o código do seu repositório
+      - name: Checkout your repository
+        uses: actions/checkout@v4
+
+      # 2. Configura o ambiente Node.js
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18 # Use uma versão LTS do Node.js
+          cache: 'npm' # Habilita o cache de pacotes para builds mais rápidos
+
+      # 3. Instala as dependências do projeto
+      - name: Install dependencies
+        run: npm install
+
+      # 4. Gera a build estática da versão web
+      - name: Build web app
+        # O comando 'expo export' gera a pasta 'dist' (ou 'web-build' em versões mais antigas)
+        run: npx expo export -p web
+
+      # 5. Corrige um problema comum de roteamento do GitHub Pages
+      # Cria uma cópia do index.html como 404.html para que o roteamento do lado do cliente funcione em reloads
+      - name: Add .nojekyll file
+        run: touch dist/.nojekyll
+      - name: Prepare for routing
+        run: cp dist/index.html dist/404.html
+
+      # 6. Configura o GitHub Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      # 7. Faz o upload dos arquivos da build para o GitHub Pages
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist # O Expo v5+ gera a build na pasta 'dist'
+
+      # 8. Faz o deploy final no GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
