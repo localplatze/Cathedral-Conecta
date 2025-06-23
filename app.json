@@ -25,7 +25,7 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "baseUrl": "https://localplatze.github.io/Cathedral-Conecta"
+      "baseUrl": "/Cathedral-Conecta/"
     },
     "extra": {
       "eas": {
