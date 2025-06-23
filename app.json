@@ -28,7 +28,8 @@
     },
     "extra": {
       "eas": {
-        "projectId": "80b20704-429b-412e-be81-275a8ef12da4"
+        "projectId": "80b20704-429b-412e-be81-275a8ef12da4",
+        "baseUrl": "https://localplatze.github.io/Cathedral-Conecta"
       }
     }
   }
