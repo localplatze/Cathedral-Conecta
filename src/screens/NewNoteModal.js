@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const CustomPicker = ({ label, options, selectedValue, onValueChange, disabled }) => {
   const [showOptions, setShowOptions] = useState(false);
   return (
-    <View style={styles.inputField}>
+    <View style={[styles.inputField, { zIndex: showOptions ? 1 : 0 }]}>
       <Text style={styles.inputLabel}>{label}</Text>
       <TouchableOpacity onPress={() => !disabled && setShowOptions(!showOptions)} style={[styles.pickerButton, disabled && styles.disabledInput]}>
         <Text style={styles.pickerButtonText}>{options.find(opt => opt.value === selectedValue)?.label || 'Selecione...'}</Text>
@@ -118,8 +118,8 @@ export const NewNoteModal = ({ isVisible, onClose, onNoteSaved, existingNote }) 
             <View style={styles.inputField}>
               <TextInput style={styles.contentInput} value={content} onChangeText={setContent} placeholder="Comece a digitar aqui..." placeholderTextColor="#A0AEC0" multiline textAlignVertical="top"/>
             </View>
-            <View style={styles.rowFields}>
-                <View style={[styles.pickerContainerStyle, {flex: 1, marginRight: 10, zIndex: 20}]}>
+            <View style={[styles.rowFields, { zIndex: 1 }]}>
+                <View style={{flex: 1, marginRight: 10}}>
                     <CustomPicker label="Categoria" options={categoryOptions} selectedValue={category} onValueChange={setCategory}/>
                 </View>
                 <View style={{flex: 0.8, marginLeft: 10}}>
@@ -146,13 +146,13 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: '#FFFFFF', paddingTop: 15, borderTopRightRadius: 25, borderTopLeftRadius: 25, maxHeight: '90%', paddingBottom: Platform.OS === 'ios' ? 30 : 10, },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 15, paddingHorizontal: 20, marginBottom: 5, },
   modalTitle: { fontSize: 22, fontWeight: 'bold', color: '#1A202C' },
-  formContainer: { paddingHorizontal: 20, paddingBottom: 150 },
+  formContainer: { paddingHorizontal: 20, paddingBottom: 20 },
   inputField: { marginBottom: 20 },
   inputLabel: { fontSize: 14, color: '#4A5568', marginBottom: 8, fontWeight: '500' },
   titleInput: { fontSize: 20, fontWeight: '600', color: '#2D3748', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', marginBottom: 10, },
   contentInput: { fontSize: 16, color: '#4A5568', minHeight: 150, textAlignVertical: 'top', paddingTop: 0, lineHeight: 24, },
-  rowFields: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 25 },
-  colorSelectorContainer: { paddingVertical: 5, alignItems: 'center' },
+  rowFields: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 25 },
+  colorSelectorContainer: { paddingVertical: 5, alignItems: 'center', height: 50 },
   colorOption: { width: 32, height: 32, borderRadius: 16, marginRight: 10, borderWidth: 2, borderColor: 'transparent', },
   colorOptionSelected: { borderColor: '#4A5568', transform: [{ scale: 1.1 }] },
   confirmButton: { backgroundColor: '#1D854C', borderRadius: 10, height: 52, justifyContent: 'center', alignItems: 'center', marginTop: 20, elevation: 2, },

@@ -10,11 +10,30 @@ import { FIREBASE_DB } from '../firebaseConnection';
 import { ref as dbRef, push, update, serverTimestamp, query, orderByChild, get } from 'firebase/database';
 import { useAuth } from '../AuthContext';
 
+const applyDateMask = (value) => {
+  const digitsOnly = value.replace(/\D/g, '');
+  if (digitsOnly.length <= 2) {
+    return digitsOnly;
+  }
+  if (digitsOnly.length <= 4) {
+    return `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2)}`;
+  }
+  return `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2, 4)}/${digitsOnly.slice(4, 8)}`;
+};
+
+const applyTimeMask = (value) => {
+  const digitsOnly = value.replace(/\D/g, '');
+  if (digitsOnly.length <= 2) {
+    return digitsOnly;
+  }
+  return `${digitsOnly.slice(0, 2)}:${digitsOnly.slice(2, 4)}`;
+};
+
 const CustomPicker = ({ label, options, selectedValue, onValueChange, disabled }) => {
   const [showOptions, setShowOptions] = useState(false);
   const selectedOptionObject = options.find(opt => opt.value === selectedValue);
   return (
-    <View style={[styles.inputField, { zIndex: showOptions ? 10 : 1 }]}> 
+    <View style={[styles.inputField, { zIndex: showOptions ? 10 : 1 }]}>
       <Text style={styles.inputLabel}>{label}</Text>
       <TouchableOpacity onPress={() => !disabled && setShowOptions(!showOptions)} style={[styles.pickerButton, disabled && styles.disabledInput]}>
         <Text style={[styles.pickerButtonText, disabled && styles.disabledText]}>
@@ -35,8 +54,11 @@ const CustomPicker = ({ label, options, selectedValue, onValueChange, disabled }
   );
 };
 
-export const NewEventModal = ({ isVisible, onClose, onEventSaved, existingEvent }) => { 
-  const { userData } = useAuth(); 
+export const NewEventModal = ({ isVisible, onClose, onEventSaved, existingEvent }) => {
+  const { userData } = useAuth();
+  
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+  const [isTimePickerVisible, setTimePickerVisibility] = useState(false);
 
   const [eventId, setEventId] = useState(null);
   const [title, setTitle] = useState('');
@@ -44,13 +66,15 @@ export const NewEventModal = ({ isVisible, onClose, onEventSaved, existingEvent 
   const [status, setStatus] = useState('active');
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState(new Date());
-  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
-  const [isTimePickerVisible, setTimePickerVisibility] = useState(false);
+  
+  const [webDateString, setWebDateString] = useState('');
+  const [webTimeString, setWebTimeString] = useState('');
+
   const [eventType, setEventType] = useState('presencial');
   const [location, setLocation] = useState('');
   const [guestsSearch, setGuestsSearch] = useState('');
   const [foundUsers, setFoundUsers] = useState([]);
-  const [selectedGuests, setSelectedGuests] = useState({}); 
+  const [selectedGuests, setSelectedGuests] = useState({});
   const [isLoadingForm, setIsLoadingForm] = useState(false);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
 
@@ -60,37 +84,51 @@ export const NewEventModal = ({ isVisible, onClose, onEventSaved, existingEvent 
   const reasonDisabled = status === 'concluded' ? ' (Evento Concluído)' : status === 'cancelled' ? ' (Evento Cancelado)' : '';
 
   useEffect(() => {
-    if (isVisible) { 
+    if (isVisible) {
       if (isEditing && existingEvent) {
         setEventId(existingEvent.id);
         setTitle(existingEvent.title || '');
-        setDescription(existingEvent.description || ''); 
+        setDescription(existingEvent.description || '');
         setStatus(existingEvent.status || 'active');
-        setDate(existingEvent.date ? new Date(existingEvent.date + "T00:00:00") : new Date()); 
+        const initialDate = existingEvent.date ? new Date(existingEvent.date + "T00:00:00") : new Date();
+        setDate(initialDate);
+        setWebDateString(applyDateMask(initialDate.toLocaleDateString('pt-BR')));
+
+        const newTime = new Date();
         if (existingEvent.time) {
-            const [hours, minutes] = existingEvent.time.split(':');
-            const newTime = new Date(); newTime.setHours(parseInt(hours, 10)); newTime.setMinutes(parseInt(minutes, 10)); setTime(newTime);
-        } else { setTime(new Date()); }
+          const [hours, minutes] = existingEvent.time.split(':');
+          newTime.setHours(parseInt(hours, 10));
+          newTime.setMinutes(parseInt(minutes, 10));
+        }
+        setTime(newTime);
+        setWebTimeString(applyTimeMask(newTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })));
+
         setEventType(existingEvent.isOnline ? 'online' : 'presencial');
         setLocation(existingEvent.location || '');
         const attendeesFormatted = {};
         if (existingEvent.attendees) {
-            Object.entries(existingEvent.attendees).forEach(([uid, guestData]) => {
-                attendeesFormatted[uid] = { name: guestData.name, avatarUrl: guestData.avatarUrl || null };
-            });
+          Object.entries(existingEvent.attendees).forEach(([uid, guestData]) => {
+            attendeesFormatted[uid] = { name: guestData.name, avatarUrl: guestData.avatarUrl || null };
+          });
         }
         setSelectedGuests(attendeesFormatted);
-      } else { 
-        resetFormFields(); 
+      } else {
+        resetFormFields();
       }
-      setFoundUsers([]); 
-      setGuestsSearch(''); 
+      setFoundUsers([]);
+      setGuestsSearch('');
     }
-  }, [isVisible, existingEvent, isEditing, userData]); 
+  }, [isVisible, existingEvent, isEditing, userData]);
 
   const resetFormFields = () => {
     setEventId(null); setTitle(''); setDescription(''); setStatus('active');
-    setDate(new Date()); const now = new Date(); now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15); setTime(now);
+    const now = new Date();
+    const futureTime = new Date();
+    futureTime.setMinutes(Math.ceil(now.getMinutes() / 15) * 15);
+    setDate(now);
+    setTime(futureTime);
+    setWebDateString(applyDateMask(now.toLocaleDateString('pt-BR')));
+    setWebTimeString(applyTimeMask(futureTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })));
     setEventType('presencial'); setLocation(''); setGuestsSearch(''); setFoundUsers([]); setIsLoadingForm(false);
     if (userData && userData.uid && userData.name) {
       setSelectedGuests({ [userData.uid]: { name: userData.name, avatarUrl: userData.profileImageUrl || null } });
@@ -103,6 +141,33 @@ export const NewEventModal = ({ isVisible, onClose, onEventSaved, existingEvent 
   const showTimePicker = () => setTimePickerVisibility(true);
   const hideTimePicker = () => setTimePickerVisibility(false);
   const handleTimeConfirm = (selectedTime) => { setTime(selectedTime); hideTimePicker(); };
+
+  const handleWebDateChange = (text) => {
+    const parts = text.split('/');
+    if (parts.length === 3) {
+        const [day, month, year] = parts;
+        if (day?.length === 2 && month?.length === 2 && year?.length === 4) {
+            const newDate = new Date(`${year}-${month}-${day}T00:00:00`);
+            if (!isNaN(newDate.getTime())) {
+                setDate(newDate);
+            }
+        }
+    }
+  };
+  const handleWebTimeChange = (text) => {
+    const parts = text.split(':');
+    if (parts.length === 2) {
+        const [hours, minutes] = parts;
+        const newTime = new Date(time);
+        if(!isNaN(parseInt(hours, 10)) && !isNaN(parseInt(minutes, 10))){
+            newTime.setHours(parseInt(hours, 10));
+            newTime.setMinutes(parseInt(minutes, 10));
+            if (!isNaN(newTime.getTime())) {
+                setTime(newTime);
+            }
+        }
+    }
+  };
 
   const handleSearchUsers = async () => {
     if (guestsSearch.trim().length < 3) { setFoundUsers([]); return; }
@@ -242,16 +307,42 @@ export const NewEventModal = ({ isVisible, onClose, onEventSaved, existingEvent 
             </View>
             <View style={styles.inputField}>
               <Text style={styles.inputLabel}>Data e Hora *</Text>
-              <View style={styles.dateTimeContainer}>
-                <TouchableOpacity onPress={showDatePicker} style={[styles.dateTimeInputWrapper, formDisabled && styles.disabledInput]} disabled={formDisabled}>
-                  <Ionicons name="calendar-outline" size={20} color={formDisabled ? "#A0AEC0" : "#4A5568"} style={styles.dateTimeIcon} />
-                  <Text style={[styles.dateTimeInputText, formDisabled && styles.disabledText]}>{date.toLocaleDateString('pt-BR')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={showTimePicker} style={[styles.dateTimeInputWrapper, formDisabled && styles.disabledInput]} disabled={formDisabled}>
-                  <Ionicons name="time-outline" size={20} color={formDisabled ? "#A0AEC0" : "#4A5568"} style={styles.dateTimeIcon} />
-                  <Text style={[styles.dateTimeInputText, formDisabled && styles.disabledText]}>{time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</Text>
-                </TouchableOpacity>
-              </View>
+              {Platform.OS === 'web' ? (
+                <View style={styles.dateTimeContainer}>
+                  <TextInput
+                    style={[styles.input, {flex: 1, marginRight: 8}, formDisabled && styles.disabledInput]}
+                    placeholder="DD/MM/AAAA"
+                    value={webDateString}
+                    onChangeText={(text) => setWebDateString(applyDateMask(text))}
+                    onBlur={() => handleWebDateChange(webDateString)}
+                    maxLength={10}
+                    editable={!formDisabled}
+                    placeholderTextColor="#A0AEC0"
+                  />
+                  <TextInput
+                    style={[styles.input, {flex: 1}, formDisabled && styles.disabledInput]}
+                    placeholder="HH:MM"
+                    keyboardType="number-pad"
+                    value={webTimeString}
+                    onChangeText={(text) => setWebTimeString(applyTimeMask(text))}
+                    onBlur={() => handleWebTimeChange(webTimeString)}
+                    maxLength={5}
+                    editable={!formDisabled}
+                    placeholderTextColor="#A0AEC0"
+                  />
+                </View>
+              ) : (
+                <View style={styles.dateTimeContainer}>
+                  <TouchableOpacity onPress={showDatePicker} style={[styles.dateTimeInputWrapper, formDisabled && styles.disabledInput]} disabled={formDisabled}>
+                    <Ionicons name="calendar-outline" size={20} color={formDisabled ? "#A0AEC0" : "#4A5568"} style={styles.dateTimeIcon} />
+                    <Text style={[styles.dateTimeInputText, formDisabled && styles.disabledText]}>{date.toLocaleDateString('pt-BR')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={showTimePicker} style={[styles.dateTimeInputWrapper, formDisabled && styles.disabledInput]} disabled={formDisabled}>
+                    <Ionicons name="time-outline" size={20} color={formDisabled ? "#A0AEC0" : "#4A5568"} style={styles.dateTimeIcon} />
+                    <Text style={[styles.dateTimeInputText, formDisabled && styles.disabledText]}>{time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
             <CustomPicker label="Formato do Encontro *" options={eventTypeOptions} selectedValue={eventType} onValueChange={setEventType} disabled={formDisabled} />
             <View style={styles.inputField}>
@@ -313,8 +404,12 @@ export const NewEventModal = ({ isVisible, onClose, onEventSaved, existingEvent 
             )}
           </View>
         </ScrollView>
-        <DateTimePickerModal isVisible={isDatePickerVisible} mode="date" date={date} onConfirm={handleDateConfirm} onCancel={hideDatePicker} />
-        <DateTimePickerModal isVisible={isTimePickerVisible} mode="time" date={time} onConfirm={handleTimeConfirm} onCancel={hideTimePicker} is24Hour />
+        {Platform.OS !== 'web' && (
+          <>
+            <DateTimePickerModal isVisible={isDatePickerVisible} mode="date" date={date} onConfirm={handleDateConfirm} onCancel={hideDatePicker} />
+            <DateTimePickerModal isVisible={isTimePickerVisible} mode="time" date={time} onConfirm={handleTimeConfirm} onCancel={hideTimePicker} is24Hour />
+          </>
+        )}
       </View>
     </Modal>
   );
@@ -333,9 +428,7 @@ const styles = StyleSheet.create({
   disabledText: { color: '#9CA3AF' },
   textArea: { minHeight: 80, paddingTop: 12, textAlignVertical: 'top', },
   dateTimeContainer: { flexDirection: 'row', justifyContent: 'space-between' },
-  dateTimeInputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F7F8FC', borderRadius: 10, height: 52, paddingHorizontal: 12, borderWidth: 1, borderColor: '#E2E8F0', },
-  dateInput: { flex: 0.58, marginRight: 8 }, 
-  timeInput: { flex: 0.38, marginLeft: 8 }, 
+  dateTimeInputWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F7F8FC', borderRadius: 10, height: 52, paddingHorizontal: 12, borderWidth: 1, borderColor: '#E2E8F0', marginHorizontal: 4},
   dateTimeIcon: { marginRight: 8 },
   dateTimeInputText: { fontSize: 16, color: '#2D3748' },
   confirmButton: { backgroundColor: '#1D854C', borderRadius: 10, height: 52, justifyContent: 'center', alignItems: 'center', marginTop: 10, elevation: 2, },
