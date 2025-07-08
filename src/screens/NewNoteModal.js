@@ -5,47 +5,81 @@ import {
 } from 'react-native';
 import Modal from 'react-native-modal';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FIREBASE_DB } from '../firebaseConnection'; // Importe o DB
+import { ref, push, update, serverTimestamp, get, query, orderByChild } from 'firebase/database'; // Importe funções do DB
+import { useAuth } from '../AuthContext'; // Para obter dados do avaliador
 
-const CustomPicker = ({ label, options, selectedValue, onValueChange, disabled }) => {
-  const [showOptions, setShowOptions] = useState(false);
-  return (
-    <View style={[styles.inputField, { zIndex: showOptions ? 1 : 0 }]}>
-      <Text style={styles.inputLabel}>{label}</Text>
-      <TouchableOpacity onPress={() => !disabled && setShowOptions(!showOptions)} style={[styles.pickerButton, disabled && styles.disabledInput]}>
-        <Text style={styles.pickerButtonText}>{options.find(opt => opt.value === selectedValue)?.label || 'Selecione...'}</Text>
-        <Ionicons name={showOptions ? "chevron-up-outline" : "chevron-down-outline"} size={22} color="#555" />
-      </TouchableOpacity>
-      {showOptions && !disabled && (
-        <View style={styles.pickerOptionsContainer}>
-          {options.map(option => (
-            <TouchableOpacity key={option.value} style={styles.pickerOption} onPress={() => { onValueChange(option.value); setShowOptions(false); }}>
-              <Text>{option.label}</Text>
-            </TouchableOpacity>
-          ))}
+// Componente para buscar e selecionar alunos
+export const StudentSelector = ({ onStudentSelect, initialValue = null, disabled }) => {
+    const [search, setSearch] = useState('');
+    const [students, setStudents] = useState([]);
+    const [selectedStudent, setSelectedStudent] = useState(initialValue);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        if(initialValue) setSelectedStudent(initialValue);
+    }, [initialValue]);
+
+    const handleSearch = async () => {
+        if (search.trim().length < 3) return;
+        setIsLoading(true);
+        try {
+            const usersRef = query(ref(FIREBASE_DB, 'users'), orderByChild('name'));
+            const snapshot = await get(usersRef);
+            const foundStudents = [];
+            snapshot.forEach(child => {
+                const user = { id: child.key, ...child.val() };
+                // Supondo que alunos tenham role 'student' ou similar
+                if (user.name.toLowerCase().includes(search.toLowerCase()) && user.role === 'aluno') {
+                    foundStudents.push(user);
+                }
+            });
+            setStudents(foundStudents);
+        } catch (error) {
+            Alert.alert("Erro", "Não foi possível buscar os alunos.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <View>
+            <View style={styles.searchContainer}>
+                <TextInput 
+                    style={[styles.input, { flex: 1 }]} 
+                    placeholder="Buscar aluno por nome..." 
+                    value={selectedStudent ? selectedStudent.name : search}
+                    onChangeText={text => {
+                        setSelectedStudent(null);
+                        setSearch(text);
+                    }}
+                    editable={!selectedStudent && !disabled}
+                />
+                <TouchableOpacity onPress={handleSearch} disabled={isLoading || disabled} style={styles.searchButton}>
+                    {isLoading ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="search" size={20} color="#fff" />}
+                </TouchableOpacity>
+            </View>
+            {!selectedStudent && students.map(student => (
+                <TouchableOpacity key={student.id} style={styles.studentItem} onPress={() => {
+                    setSelectedStudent(student);
+                    onStudentSelect(student);
+                    setStudents([]);
+                }}>
+                    <Text>{student.name}</Text>
+                </TouchableOpacity>
+            ))}
         </View>
-      )}
-    </View>
-  );
+    );
 };
 
-export const PREDEFINED_CATEGORIES = [
-    { id: 'geral', name: 'Geral', color: '#78909C' },
-    { id: 'aula', name: 'Aula', color: '#42A5F5' },
-    { id: 'projeto', name: 'Projeto', color: '#66BB6A' },
-    { id: 'reuniao', name: 'Reunião', color: '#FFA726' },
-    { id: 'pessoal', name: 'Pessoal', color: '#AB47BC' },
-    { id: 'ideia', name: 'Ideia', color: '#26A69A' },
-];
-
-export const NOTE_COLORS = ['#FFCDD2', '#C5CAE9', '#B2DFDB', '#FFF9C4', '#D1C4E9', '#FFCCBC', '#CFD8DC'];
 
 export const NewNoteModal = ({ isVisible, onClose, onNoteSaved, existingNote }) => {
+  const { userData } = useAuth();
   const [noteId, setNoteId] = useState(null);
-  const [title, setTitle] = useState('');
+  const [student, setStudent] = useState(null);
   const [content, setContent] = useState('');
-  const [category, setCategory] = useState(PREDEFINED_CATEGORIES[0].id);
-  const [color, setColor] = useState(NOTE_COLORS[0]);
+  const [grade, setGrade] = useState('');
+  const [semester, setSemester] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const isEditing = !!existingNote;
 
@@ -53,51 +87,57 @@ export const NewNoteModal = ({ isVisible, onClose, onNoteSaved, existingNote }) 
     if (isVisible) {
       if (isEditing && existingNote) {
         setNoteId(existingNote.id);
-        setTitle(existingNote.title || '');
+        setStudent({ id: existingNote.studentId, name: existingNote.studentName });
         setContent(existingNote.content || '');
-        setCategory(existingNote.category || PREDEFINED_CATEGORIES[0].id);
-        setColor(existingNote.color || NOTE_COLORS[0]);
+        setGrade(String(existingNote.grade || ''));
+        setSemester(existingNote.semester || '');
       } else {
-        setNoteId(null); setTitle(''); setContent('');
-        setCategory(PREDEFINED_CATEGORIES[0].id); setColor(NOTE_COLORS[0]);
+        // Resetar formulário
+        setNoteId(null); setStudent(null); setContent('');
+        setGrade(''); setSemester('');
       }
     }
-  }, [existingNote, isVisible, isEditing]);
-
-  const categoryOptions = PREDEFINED_CATEGORIES.map(cat => ({ label: cat.name, value: cat.id }));
+  }, [existingNote, isVisible]);
 
   const handleSaveNote = async () => {
-    if (!title.trim() && !content.trim()) {
-      Alert.alert('Nota Vazia', 'Adicione um título ou conteúdo para a nota.');
-      return;
+    if (!student) { Alert.alert('Erro', 'Por favor, selecione um aluno.'); return; }
+    if (!content.trim()) { Alert.alert('Erro', 'O campo de observação não pode ser vazio.'); return; }
+    if (!semester.trim()) { Alert.alert('Erro', 'Por favor, informe o semestre.'); return; }
+    const gradeNumber = parseFloat(grade.replace(',', '.'));
+    if (isNaN(gradeNumber) || gradeNumber < 0 || gradeNumber > 10) {
+      Alert.alert('Erro', 'Por favor, insira uma nota válida entre 0 e 10.'); return;
     }
+    
     setIsLoading(true);
+    const assessmentData = {
+      studentId: student.id,
+      studentName: student.name,
+      evaluatorId: userData.uid,
+      evaluatorName: userData.name,
+      date: new Date().toISOString().split('T')[0], // Data atual
+      semester: semester.trim(),
+      grade: gradeNumber,
+      content: content.trim(),
+    };
+
     try {
-      const storedNotes = await AsyncStorage.getItem('@notes');
-      const notes = storedNotes ? JSON.parse(storedNotes) : [];
-      const now = Date.now();
       if (isEditing && noteId) {
-        const noteIndex = notes.findIndex(note => note.id === noteId);
-        if (noteIndex > -1) {
-          notes[noteIndex] = {
-            ...notes[noteIndex],
-            title: title.trim(), content: content.trim(),
-            category, color, updatedAt: now,
-          };
-        }
+        // Atualizar registro existente
+        const noteRef = ref(FIREBASE_DB, `studentAssessments/${noteId}`);
+        await update(noteRef, assessmentData);
+        Alert.alert('Sucesso', 'Acompanhamento atualizado!');
       } else {
-        const newNote = {
-          id: now.toString(), title: title.trim(), content: content.trim(),
-          category, color, createdAt: now, updatedAt: now,
-        };
-        notes.push(newNote);
+        // Criar novo registro
+        assessmentData.createdAt = serverTimestamp();
+        const assessmentsRef = ref(FIREBASE_DB, 'studentAssessments');
+        await push(assessmentsRef, assessmentData);
+        Alert.alert('Sucesso', 'Acompanhamento registrado!');
       }
-      await AsyncStorage.setItem('@notes', JSON.stringify(notes));
-      Alert.alert('Sucesso', `Nota ${isEditing ? 'atualizada' : 'criada'}!`);
       onNoteSaved();
       onClose();
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar a nota.');
+      console.error("Erro ao salvar:", error);
+      Alert.alert('Erro', 'Não foi possível salvar o acompanhamento.');
     } finally {
       setIsLoading(false);
     }
@@ -107,32 +147,38 @@ export const NewNoteModal = ({ isVisible, onClose, onNoteSaved, existingNote }) 
     <Modal isVisible={isVisible} onSwipeComplete={onClose} swipeDirection={['down']} onBackdropPress={onClose} style={styles.modal} avoidKeyboard>
       <View style={styles.modalContent}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>{isEditing ? 'Editar Nota' : 'Nova Nota'}</Text>
+          <Text style={styles.modalTitle}>{isEditing ? 'Editar Acompanhamento' : 'Novo Acompanhamento'}</Text>
           <TouchableOpacity onPress={onClose}><Ionicons name="close-outline" size={28} color="#333" /></TouchableOpacity>
         </View>
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.formContainer}>
             <View style={styles.inputField}>
-              <TextInput style={styles.titleInput} value={title} onChangeText={setTitle} placeholder="Título da nota..." placeholderTextColor="#A0AEC0"/>
+              <Text style={styles.inputLabel}>Aluno *</Text>
+              <StudentSelector 
+                onStudentSelect={(selected) => setStudent(selected)}
+                initialValue={isEditing ? student : null}
+                disabled={isEditing} // Não permite alterar o aluno na edição
+              />
             </View>
+            
+            <View style={styles.rowFields}>
+                <View style={[styles.inputField, { flex: 1, marginRight: 10 }]}>
+                    <Text style={styles.inputLabel}>Semestre *</Text>
+                    <TextInput style={styles.input} value={semester} onChangeText={setSemester} placeholder="Ex: 2024.1"/>
+                </View>
+                <View style={[styles.inputField, { flex: 1, marginLeft: 10 }]}>
+                    <Text style={styles.inputLabel}>Nota (0-10) *</Text>
+                    <TextInput style={styles.input} value={grade} onChangeText={setGrade} placeholder="Ex: 8.5" keyboardType="numeric"/>
+                </View>
+            </View>
+
             <View style={styles.inputField}>
-              <TextInput style={styles.contentInput} value={content} onChangeText={setContent} placeholder="Comece a digitar aqui..." placeholderTextColor="#A0AEC0" multiline textAlignVertical="top"/>
+              <Text style={styles.inputLabel}>Observações *</Text>
+              <TextInput style={styles.contentInput} value={content} onChangeText={setContent} placeholder="Descreva o acompanhamento, progresso, dificuldades..." multiline />
             </View>
-            <View style={[styles.rowFields, { zIndex: 1 }]}>
-                <View style={{flex: 1, marginRight: 10}}>
-                    <CustomPicker label="Categoria" options={categoryOptions} selectedValue={category} onValueChange={setCategory}/>
-                </View>
-                <View style={{flex: 0.8, marginLeft: 10}}>
-                    <Text style={styles.inputLabel}>Cor</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorSelectorContainer}>
-                        {NOTE_COLORS.map(c => (
-                        <TouchableOpacity key={c} style={[styles.colorOption, { backgroundColor: c }, c === color && styles.colorOptionSelected,]} onPress={() => setColor(c)}/>
-                        ))}
-                    </ScrollView>
-                </View>
-            </View>
+            
             <TouchableOpacity style={[styles.confirmButton, isLoading && styles.confirmButtonDisabled]} onPress={handleSaveNote} disabled={isLoading}>
-              {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmButtonText}>{isEditing ? 'Salvar Alterações' : 'Criar Nota'}</Text>}
+              {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmButtonText}>{isEditing ? 'Salvar Alterações' : 'Registrar'}</Text>}
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -140,6 +186,7 @@ export const NewNoteModal = ({ isVisible, onClose, onNoteSaved, existingNote }) 
     </Modal>
   );
 };
+
 
 const styles = StyleSheet.create({
   modal: { justifyContent: 'flex-end', margin: 0 },
@@ -149,18 +196,14 @@ const styles = StyleSheet.create({
   formContainer: { paddingHorizontal: 20, paddingBottom: 20 },
   inputField: { marginBottom: 20 },
   inputLabel: { fontSize: 14, color: '#4A5568', marginBottom: 8, fontWeight: '500' },
-  titleInput: { fontSize: 20, fontWeight: '600', color: '#2D3748', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', marginBottom: 10, },
-  contentInput: { fontSize: 16, color: '#4A5568', minHeight: 150, textAlignVertical: 'top', paddingTop: 0, lineHeight: 24, },
-  rowFields: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 25 },
-  colorSelectorContainer: { paddingVertical: 5, alignItems: 'center', height: 50 },
-  colorOption: { width: 32, height: 32, borderRadius: 16, marginRight: 10, borderWidth: 2, borderColor: 'transparent', },
-  colorOptionSelected: { borderColor: '#4A5568', transform: [{ scale: 1.1 }] },
+  input: { fontSize: 16, color: '#4A5568', backgroundColor: '#F7F8FC', borderRadius: 10, minHeight: 52, paddingHorizontal: 15, borderWidth: 1, borderColor: '#E2E8F0', },
+  contentInput: { fontSize: 16, color: '#4A5568', minHeight: 150, textAlignVertical: 'top', backgroundColor: '#F7F8FC', borderRadius: 10, padding: 15, borderWidth: 1, borderColor: '#E2E8F0', lineHeight: 24, },
+  rowFields: { flexDirection: 'row', justifyContent: 'space-between' },
   confirmButton: { backgroundColor: '#1D854C', borderRadius: 10, height: 52, justifyContent: 'center', alignItems: 'center', marginTop: 20, elevation: 2, },
   confirmButtonDisabled: { backgroundColor: '#A5D6A7' },
   confirmButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
-  pickerButton: { backgroundColor: '#F7F8FC', borderRadius: 10, height: 50, paddingHorizontal: 15, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', },
-  pickerButtonText: { fontSize: 15, color: '#2D3748' },
-  disabledInput: { backgroundColor: '#E5E7EB' },
-  pickerOptionsContainer: { backgroundColor: '#FFFFFF', borderRadius: 8, marginTop: 4, borderColor: '#E2E8F0', borderWidth: 1, elevation: 5, zIndex: 1000, position: 'absolute', width: '100%', top: 55, },
-  pickerOption: { paddingVertical: 12, paddingHorizontal: 15, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  // Estilos para o StudentSelector
+  searchContainer: { flexDirection: 'row', alignItems: 'center' },
+  searchButton: { backgroundColor: '#1D854C', padding: 14, borderRadius: 10, marginLeft: 10 },
+  studentItem: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#EEE', backgroundColor: '#FAFAFA' },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, StatusBar, ActivityIndicator
@@ -68,12 +68,23 @@ export const HomeScreen = ({ navigation }) => {
     }
   }, [userData]);
 
-  const shortcuts = [
-    { id: 1, title: 'Agenda', iconName: 'calendar-month-outline', screen: 'Agenda', color: '#4CAF50' },
-    { id: 2, title: 'Arquivos', iconName: 'folder-open-outline', screen: 'Arquivos', color: '#2196F3' },
-    { id: 3, title: 'Tarefas', iconName: 'checkbox-marked-circle-outline', screen: 'Tarefas', color: '#FF9800' },
-    { id: 4, title: 'Notas', iconName: 'note-text-outline', screen: 'Notas', color: '#9C27B0' },
-  ];
+   const shortcuts = useMemo(() => {
+    const baseShortcuts = [
+      { id: 1, title: 'Agenda', iconName: 'calendar-month-outline', screen: 'Agenda', color: '#4CAF50' },
+      { id: 2, title: 'Arquivos', iconName: 'folder-open-outline', screen: 'Arquivos', color: '#2196F3' },
+      { id: 3, title: 'Tarefas', iconName: 'checkbox-marked-circle-outline', screen: 'Tarefas', color: '#FF9800' },
+    ];
+
+    if (userData?.role === 'psicopedagogo') {
+      return [
+        ...baseShortcuts,
+        { id: 4, title: 'Acompanhamentos', iconName: 'note-text-outline', screen: 'Notas', color: '#9C27B0' },
+        { id: 5, title: 'Relatórios', iconName: 'chart-line', screen: 'Relatorios', color: '#E91E63' } 
+      ];
+    }
+    
+    return baseShortcuts;
+  }, [userData]); 
 
   const formatDate = (dateString, timeString) => {
     try {

@@ -15,6 +15,7 @@ import { NotasScreen } from '../screens/NotasScreen';
 import { TarefasScreen } from '../screens/TarefasScreen';
 import { ArquivosScreen } from '../screens/ArquivosScreen';
 import { AgendaScreen } from '../screens/AgendaScreen';
+import { RelatoriosScreen } from '../screens/RelatoriosScreen';
 
 import { View, ActivityIndicator, StyleSheet, StatusBar, Text } from 'react-native';
 
@@ -42,9 +43,9 @@ const AppScreens = () => (
     <MainAppStack.Screen name="Tarefas" component={TarefasScreen} />
     <MainAppStack.Screen name="Arquivos" component={ArquivosScreen} />
     <MainAppStack.Screen name="Agenda" component={AgendaScreen} />
+    <MainAppStack.Screen name="Relatorios" component={RelatoriosScreen} />
   </MainAppStack.Navigator>
 );
-
 
 const AppNavigator = () => {
   const { user, userData, isLoadingAuth } = useAuth();

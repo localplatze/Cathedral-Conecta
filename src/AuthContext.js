@@ -3,13 +3,14 @@ import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { ref, get } from 'firebase/database';
 import { FIREBASE_AUTH, FIREBASE_DB } from './firebaseConnection';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null); 
+  const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true); 
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, async (firebaseUser) => {
@@ -50,14 +51,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    setIsLoadingAuth(true);
     try {
       await firebaseSignOut(FIREBASE_AUTH);
     } catch (error) {
       console.error("Erro ao fazer logout:", error);
-      Alert.alert("Erro", "Não foi possível fazer logout.");
-    } finally {
-      
+      Alert.alert("Erro", "Não foi possível sair da sua conta no momento.");
     }
   };
 

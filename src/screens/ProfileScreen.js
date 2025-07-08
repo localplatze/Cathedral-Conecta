@@ -140,30 +140,43 @@ export const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  const handleLogoutPress = async () => {
-    Alert.alert(
-        "Sair da Conta",
-        "Você tem certeza que deseja sair?",
-        [
-            { text: "Cancelar", style: "cancel" },
-            { 
-                text: "Sair", 
-                style: "destructive",
-                onPress: async () => {
-                    if (logout) {
-                        await logout();
-                        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-                    } else {
-                        console.error("Função de logout não encontrada no AuthContext.");
-                        await FIREBASE_AUTH.signOut();
-                        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-                    }
-                }
+  const handleLogoutPress = () => {
+    const performLogout = async () => {
+        try {
+            if (logout) {
+                await logout();
+            } else {
+                console.error("Função de logout não encontrada no AuthContext.");
+                await FIREBASE_AUTH.signOut();
             }
-        ],
-        { cancelable: true }
-    );
-  };
+        } catch (error) {
+            console.error("Erro ao fazer logout:", error);
+            Alert.alert("Erro", "Não foi possível sair da sua conta no momento.");
+        }
+    };
+
+    if (Platform.OS === 'web') {
+        // Na web, usamos o confirm nativo do navegador.
+        if (window.confirm("Você tem certeza que deseja sair?")) {
+            performLogout();
+        }
+    } else {
+        // Em mobile (iOS/Android), usamos o Alert nativo do React Native.
+        Alert.alert(
+            "Sair da Conta",
+            "Você tem certeza que deseja sair?",
+            [
+                { text: "Cancelar", style: "cancel" },
+                { 
+                    text: "Sair", 
+                    style: "destructive",
+                    onPress: performLogout // Chama a função aqui
+                }
+            ],
+            { cancelable: true }
+        );
+    }
+};
 
   if (!contextUserData && !FIREBASE_AUTH.currentUser) { 
     return (
